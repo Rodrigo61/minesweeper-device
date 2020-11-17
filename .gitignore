@@ -2,3 +2,8 @@ Module.symvers
 modules.order
 *.o
 *.ko
+*.cmd
+.tmp_versions/
+.vscode/
+client
+minesweeper.mod.c
