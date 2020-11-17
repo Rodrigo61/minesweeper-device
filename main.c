@@ -24,6 +24,8 @@ MODULE_LICENSE("Dual BSD/GPL"); // TODO: Which license?
 
 struct minesweeper_dev device;
 int minesweeper_major;
+int minesweeper_minor = 0;
+int device_count = 1;
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -51,6 +53,7 @@ void create_board(struct minesweeper_dev *dev)
 {
 	int i;
 
+	printk("[[[[[MINESWEEPER]]]]] Creating board");
 	if (!dev->board) 
 	{
 		dev->board = kmalloc(sizeof(char) * BOARD_SZ, GFP_KERNEL);
@@ -69,6 +72,7 @@ void generate_bomb_positions(struct minesweeper_dev *dev)
 {
 	int i;
 
+	printk("[[[[[MINESWEEPER]]]]] Generating bombs");
 	if (!dev->bomb_positions) 
 	{
 		dev->bomb_positions = kmalloc(sizeof(int) * BOMB_COUNT, GFP_KERNEL);
@@ -90,6 +94,7 @@ void restart_game(struct minesweeper_dev *dev)
 {
 	generate_bomb_positions(dev);
 	create_board(dev);
+	dev->game_loop = true;
 }
 
 /**
@@ -99,6 +104,7 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
 	struct minesweeper_dev *dev = filp->private_data; 
+	printk("[[[[[MINESWEEPER]]]]] READ");
 
 	if (*f_pos >= BOARD_SZ)
 		return 0;
@@ -124,17 +130,27 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	char *play_buf;
 	long play;
 
+	printk("[[[[[MINESWEEPER]]]]] WRITE");
+
 	play_buf = kmalloc(sizeof(char) * count, GFP_KERNEL);
 	if (!play_buf)
 		return 0;
 
 	if (copy_from_user(play_buf, buf, count)) 
+	{
+		kfree(play_buf);
 		return -EFAULT;
+	} 
+		
 
-	if (kstrtol(play_buf, 10, &play) != 0) // TODO:  
+	if (kstrtol(play_buf, 10, &play) != 0) // TODO:
+	{
+		kfree(play_buf);
 		return 0; // TODO: Search what would be the correct way of reporting this error.
+	}
 
 	exec_play(dev, play);
+	kfree(play_buf);
 
 	return count;
 }
@@ -152,12 +168,12 @@ struct file_operations minesweeper_fops = {
  */
 static void minesweeper_setup_cdev(void)
 {
-	int err, devno = MKDEV(minesweeper_major, 0);
+	int err, devno = MKDEV(minesweeper_major, minesweeper_minor);
     
 	cdev_init(&device.cdev, &minesweeper_fops);
 	device.cdev.owner = THIS_MODULE;
 	
-	err = cdev_add (&device.cdev, devno, 1);
+	err = cdev_add(&device.cdev, devno, device_count);
 	if (err)
 		printk(KERN_NOTICE "Error %d adding minesweeper", err);
 }
@@ -167,7 +183,7 @@ int minesweeper_init_module(void)
 	int result;
 	dev_t dev = 0;
 
-	result = alloc_chrdev_region(&dev, 1, 1, "minesweeper");
+	result = alloc_chrdev_region(&dev, minesweeper_minor, device_count, "minesweeper");
 	minesweeper_major = MAJOR(dev);
 	if (result < 0) {
 		printk(KERN_WARNING "minesweeper: can't get major %d\n", minesweeper_major);
@@ -181,8 +197,8 @@ int minesweeper_init_module(void)
 
 void minesweeper_cleanup_module(void)
 {
-	dev_t devno = MKDEV(minesweeper_major, 1);
-	unregister_chrdev_region(devno, 1);
+	dev_t devno = MKDEV(minesweeper_major, minesweeper_minor);
+	unregister_chrdev_region(devno, device_count);
 }
 
 module_init(minesweeper_init_module);

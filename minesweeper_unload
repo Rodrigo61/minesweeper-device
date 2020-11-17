@@ -2,14 +2,8 @@
 module="minesweeper"
 device="minesweeper"
 
-# invoke rmmod with all arguments we got
-rmmod $module $* || exit 1
+# Invoke rmmod
+rmmod $module || exit 1
 
-# Remove stale nodes
-
-rm -f /dev/${device} /dev/${device} 
-
-
-
-
-
+# Remove special nodes
+rm -f /dev/${device}
