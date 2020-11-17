@@ -1,7 +1,7 @@
 #!/bin/sh
 module="minesweeper"
 device="minesweeper"
-mode="664"
+mode="777"
 
 # Group: since distributions do it differently, look for wheel or use staff
 if grep -q '^staff:' /etc/group; then

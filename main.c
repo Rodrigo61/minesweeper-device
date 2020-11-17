@@ -39,7 +39,6 @@ int minesweeper_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-
 void exec_play(int position) 
 {
 	// TODO: Verify if a bomb has exploded and interrupt the game loop.
@@ -61,7 +60,7 @@ void create_board(void)
 		}
 	}
 
-	for (i = 0; i < BOARD_SZ; i++)
+	for (i = 0; i < BOARD_SZ; ++i)
 		device.board[i] = NOT_OPEN_CELL;
 }
 
@@ -102,20 +101,14 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 {
 	printk("[[[[[MINESWEEPER]]]]] READ");
 
-	if (*f_pos >= BOARD_SZ)
-		return 0;
-	if (*f_pos + count > BOARD_SZ)
-		count = BOARD_SZ - *f_pos;
-
 	if (!device.game_loop)
 		restart_game();
 
 	//TODO: Add a \n at the end of each row.
-	if (copy_to_user(buf, device.board + *f_pos, count)) {
+	if (copy_to_user(buf, device.board, BOARD_SZ)) {
 		return -EFAULT;
 	}
 
-	*f_pos += count;
 	return count;
 }
 
@@ -133,8 +126,6 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to allocate play_buf");
 		return 0;
 	}
-		
-	printk("[[[[[MINESWEEPER]]]]] WRITE, play_buf = %s", play_buf);
 
 	if (copy_from_user(play_buf, buf, count)) 
 	{
@@ -142,7 +133,9 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		kfree(play_buf);
 		return -EFAULT;
 	} 
-		
+
+	play_buf[count] = '\0';
+	printk("[[[[[MINESWEEPER]]]]] WRITE, play_buf = %s", play_buf);	
 
 	if (kstrtol(play_buf, 10, &play) != 0) // TODO:
 	{
@@ -156,6 +149,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	exec_play(play);
 	kfree(play_buf);
 
+	printk("[[[[[MINESWEEPER]]]]] SUCCESSFUL WRITE\n");
 	return count;
 }
 
