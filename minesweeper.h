@@ -31,12 +31,6 @@ struct minesweeper_dev {
 };
 
 /*
- * The different configurable parameters
- */
-extern int row_count;
-extern int col_count;
-
-/*
  * Prototypes for shared functions
  */
 int minesweeper_p_init(dev_t dev);
