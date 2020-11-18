@@ -137,7 +137,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	play_buf[count] = '\0';
 	printk("[[[[[MINESWEEPER]]]]] WRITE, play_buf = %s", play_buf);	
 
-	if (kstrtol(play_buf, 10, &play) != 0) // TODO:
+	if (kstrtol(play_buf, 10, &play) != 0)
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to convert play_buf");
 		kfree(play_buf);
@@ -161,9 +161,6 @@ struct file_operations minesweeper_fops = {
 	.release =  minesweeper_release,
 };
 
-/*
- * Set up the char_dev structure for this device.
- */
 static void minesweeper_setup_cdev(void)
 {
 	int err, devno = MKDEV(minesweeper_major, minesweeper_minor);
