@@ -11,7 +11,7 @@ else
 fi
 
 # Invoke insmod
-insmod ./$module.ko || exit 1
+insmod ./$module.ko board_w=$1 board_h=$2 || exit 1
 
 # Retrieve the major number
 major=$(awk "\$2==\"$module\" {print \$1}" /proc/devices)

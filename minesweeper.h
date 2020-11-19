@@ -26,6 +26,8 @@
 struct minesweeper_dev {
 	struct cdev cdev;
     char *board;
+    int board_w;
+    int board_h;
     int *bomb_positions;
     bool game_loop;
 };

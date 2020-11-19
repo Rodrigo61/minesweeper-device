@@ -13,6 +13,7 @@
 #include <linux/cdev.h>
 
 #include <linux/uaccess.h>	
+#include <linux/moduleparam.h>
 
 #include "minesweeper.h"
 
@@ -26,6 +27,13 @@ struct minesweeper_dev device;
 int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
+static int board_w, board_h;
+
+module_param(board_w, int, S_IRUGO);
+module_param(board_h, int, S_IRUGO);
+
+MODULE_PARM_DESC(board_w, "Width of the minesweeper board");
+MODULE_PARM_DESC(board_h, "Height of the minesweeper board");
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -48,19 +56,20 @@ void exec_play(int position)
 void create_board(void)
 {
 	int i;
+	unsigned long board_size = device.board_w * device.board_h;
 
 	printk("[[[[[MINESWEEPER]]]]] Creating board");
 	if (!device.board) 
 	{
-		device.board = kmalloc(sizeof(char) * BOARD_SZ, GFP_KERNEL);
+		device.board = kmalloc(sizeof(char) * board_size, GFP_KERNEL);
 		if (!device.board)
 		{
 			printk("[[[[[MINESWEEPER]]]]] There is no memory enough to create a new board.");
 			return;
 		}
 	}
-
-	for (i = 0; i < BOARD_SZ; ++i)
+	
+	for (i = 0; i < board_size; ++i)
 		device.board[i] = NOT_OPEN_CELL;
 }
 
@@ -185,7 +194,11 @@ int minesweeper_init_module(void)
 		return result;
 	}
 
+	printk(KERN_INFO "[[[[[MINESWEEPER]]]]] (board_w, board_h): (%d, %d)", board_w, board_h);
+
 	device.game_loop = false;
+	device.board_w = board_w;
+	device.board_h = board_h;
 	minesweeper_setup_cdev();
 
 	return result;
