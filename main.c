@@ -104,7 +104,6 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 	if (!device.game_loop)
 		restart_game();
 
-	//TODO: Add a \n at the end of each row.
 	if (copy_to_user(buf, device.board, BOARD_SZ)) {
 		return -EFAULT;
 	}
@@ -126,6 +125,9 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to allocate play_buf");
 		return 0;
 	}
+
+	if (!device.game_loop)
+		restart_game();
 
 	if (copy_from_user(play_buf, buf, count)) 
 	{
