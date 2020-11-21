@@ -31,6 +31,7 @@ struct minesweeper_dev {
     char *board;
     char board_w;
     char board_h;
+    char bomb_count;
     int *bomb_positions;
     bool game_loop;
 };

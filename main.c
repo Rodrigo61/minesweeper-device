@@ -27,13 +27,15 @@ struct minesweeper_dev device;
 int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
-static int board_w, board_h;
+static int board_w, board_h, bomb_count;
 
 module_param(board_w, int, S_IRUGO);
 module_param(board_h, int, S_IRUGO);
+module_param(bomb_count, int, S_IRUGO);
 
 MODULE_PARM_DESC(board_w, "Width of the minesweeper board");
 MODULE_PARM_DESC(board_h, "Height of the minesweeper board");
+MODULE_PARM_DESC(bomb_count, "Count of bombs in minesweeper board");
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -80,7 +82,7 @@ void generate_bomb_positions(void)
 	printk("[[[[[MINESWEEPER]]]]] Generating bombs");
 	if (!device.bomb_positions) 
 	{
-		device.bomb_positions = kmalloc(sizeof(int) * BOMB_COUNT, GFP_KERNEL);
+		device.bomb_positions = kmalloc(sizeof(int) * bomb_count, GFP_KERNEL);
 		if (!device.bomb_positions)
 		{
 			printk("[[[[[MINESWEEPER]]]]] There is no memory enough to create the list of bomb positions.");
@@ -89,7 +91,7 @@ void generate_bomb_positions(void)
 	}
 
 	// TODO: Use a random function to generate the bombs.
-	for (i = 1; i <= BOMB_COUNT; ++i)
+	for (i = 1; i <= bomb_count; ++i)
 	{
 		device.bomb_positions[i - 1] = i * 3;
 	}
@@ -214,6 +216,7 @@ int minesweeper_init_module(void)
 	device.game_loop = false;
 	device.board_w = (char)board_w;
 	device.board_h = (char)board_h;
+	device.bomb_count = (char)bomb_count;
 	minesweeper_setup_cdev();
 
 	return result;
