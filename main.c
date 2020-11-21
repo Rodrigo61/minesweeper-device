@@ -102,23 +102,38 @@ void restart_game(void)
 	device.game_loop = true;
 }
 
+void prepend_board_dimensions(char *buf)
+{
+	unsigned long board_size = device.board_w * device.board_h;
+	size_t i;
+	buf[0] = device.board_w;
+	buf[1] = device.board_h;
+	for (i = 0; i < board_size; ++i)
+	{
+		buf[i + BOARD_DIM_COUNT] = device.board[i];
+	}
+}
+
 /**
  * Read the board sequentially.
 */
 ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
+	long board_size = device.board_w * device.board_h;
+	long write_size = board_size + BOARD_DIM_COUNT;
+	char *write_buf = kmalloc(board_size * sizeof(char) + BOARD_DIM_COUNT, GFP_KERNEL);
 	printk("[[[[[MINESWEEPER]]]]] READ");
 
 	if (!device.game_loop)
 		restart_game();
 
-	//TODO: Add a \n at the end of each row.
-	if (copy_to_user(buf, device.board, BOARD_SZ)) {
+	prepend_board_dimensions(write_buf);
+	if (copy_to_user(buf, write_buf, write_size)) {
 		return -EFAULT;
 	}
-
-	return count;
+	kfree(write_buf);
+	return write_size;
 }
 
 ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t count,
@@ -197,8 +212,8 @@ int minesweeper_init_module(void)
 	printk(KERN_INFO "[[[[[MINESWEEPER]]]]] (board_w, board_h): (%d, %d)", board_w, board_h);
 
 	device.game_loop = false;
-	device.board_w = board_w;
-	device.board_h = board_h;
+	device.board_w = (char)board_w;
+	device.board_h = (char)board_h;
 	minesweeper_setup_cdev();
 
 	return result;

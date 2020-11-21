@@ -10,6 +10,9 @@
 #ifndef COL_COUNT
 #define COL_COUNT 10
 #endif
+#ifndef BOARD_DIM_COUNT
+#define BOARD_DIM_COUNT 2
+#endif
 #ifndef BOARD_SZ
 #define BOARD_SZ ROW_COUNT * COL_COUNT
 #endif
@@ -26,8 +29,8 @@
 struct minesweeper_dev {
 	struct cdev cdev;
     char *board;
-    int board_w;
-    int board_h;
+    char board_w;
+    char board_h;
     int *bomb_positions;
     bool game_loop;
 };
