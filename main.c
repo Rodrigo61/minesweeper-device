@@ -28,6 +28,7 @@ int minesweeper_minor = 0;
 int device_count = 1;
 char lost_str[] = "YOU LOST";
 char won_str[] = "YOU WON";
+int adj_cells[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -55,16 +56,67 @@ void display_won(void)
 	memcpy(device.board, won_str, sizeof(won_str));
 }
 
-void exec_play(int position) 
+bool has_bomb(int position)
 {
 	int i;
-	device.board[position] = OPEN_CELL;
 	for (i = 0; i < BOMB_COUNT; ++i)
 		if (device.bomb_positions[i] == position)
-		{
-			set_lost();
-			break;
-		}
+			return true;
+	return false;
+}
+
+bool valid_coords(int row, int col)
+{
+	return row >= 0 && row < ROW_COUNT && col > 0 && col < COL_COUNT;
+}
+
+int get_position_row(int position)
+{
+	return position / COL_COUNT;
+}
+
+int get_position_col(int position)
+{
+	return position % ROW_COUNT;
+}
+
+int to_position(int row, int col)
+{
+	return row * COL_COUNT + col;
+}
+
+int surround_bomb_count(int position)
+{
+	int i, pos_i, pos_j, adj_i, adj_j, count = 0;
+
+	pos_i = get_position_row(position);
+	pos_j = get_position_col(position);
+
+	for (i = 0; i < 8; ++i)
+	{
+		adj_i = pos_i + adj_cells[i][0];
+		adj_j = pos_j + adj_cells[i][1];
+		if (valid_coords(adj_i, adj_j) && has_bomb(to_position(adj_i, adj_j)))
+			count++;
+	}
+		
+	return count;
+}
+
+void exec_play(int position) 
+{
+	int bomb_count;
+	
+	device.board[position] = OPEN_CELL;
+	if (has_bomb(position))
+	{
+		set_lost();
+		return;
+	}
+
+	bomb_count = surround_bomb_count(position);
+	if (bomb_count > 0)
+		device.board[position] = bomb_count + '0';
 }
 
 void create_board(void)
