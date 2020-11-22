@@ -26,6 +26,8 @@ struct minesweeper_dev device;
 int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
+char lost_str[] = "YOU LOST";
+char won_str[] = "YOU WON";
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -39,10 +41,30 @@ int minesweeper_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+void set_lost(void) 
+{
+	device.game_state = END_GAME;
+	memset(device.board, 0, sizeof(char) * BOARD_SZ);
+	memcpy(device.board, lost_str, sizeof(lost_str));
+}
+
+void display_won(void) 
+{
+	device.game_state = END_GAME;
+	memset(device.board, 0, sizeof(char) * BOARD_SZ);
+	memcpy(device.board, won_str, sizeof(won_str));
+}
+
 void exec_play(int position) 
 {
-	// TODO: Verify if a bomb has exploded and interrupt the game loop.
+	int i;
 	device.board[position] = OPEN_CELL;
+	for (i = 0; i < BOMB_COUNT; ++i)
+		if (device.bomb_positions[i] == position)
+		{
+			set_lost();
+			break;
+		}
 }
 
 void create_board(void)
@@ -90,7 +112,7 @@ void restart_game(void)
 {
 	generate_bomb_positions();
 	create_board();
-	device.game_loop = true;
+	device.game_state = ONGOING_GAME;
 }
 
 /**
@@ -101,13 +123,14 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 {
 	printk("[[[[[MINESWEEPER]]]]] READ");
 
-	if (!device.game_loop)
+	if (device.game_state == NEW_GAME)
 		restart_game();
 
-	if (copy_to_user(buf, device.board, BOARD_SZ)) {
+	if (copy_to_user(buf, device.board, BOARD_SZ)) 
 		return -EFAULT;
-	}
-
+	
+	if (device.game_state == END_GAME)
+		device.game_state = NEW_GAME;
 	return count;
 }
 
@@ -126,7 +149,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		return 0;
 	}
 
-	if (!device.game_loop)
+	if (device.game_state == NEW_GAME)
 		restart_game();
 
 	if (copy_from_user(play_buf, buf, count)) 
@@ -187,7 +210,7 @@ int minesweeper_init_module(void)
 		return result;
 	}
 
-	device.game_loop = false;
+	device.game_state = NEW_GAME;
 	minesweeper_setup_cdev();
 
 	return result;

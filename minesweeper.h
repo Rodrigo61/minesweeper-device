@@ -23,11 +23,15 @@
 #define OPEN_CELL ' '
 #endif
 
+#define NEW_GAME 0
+#define END_GAME 1
+#define ONGOING_GAME 2
+
 struct minesweeper_dev {
 	struct cdev cdev;
     char *board;
     int *bomb_positions;
-    bool game_loop;
+    int game_state;
 };
 
 /*
