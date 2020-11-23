@@ -25,6 +25,9 @@
 #ifndef OPEN_CELL
 #define OPEN_CELL ' '
 #endif
+#ifndef MAX_DEV_COUNT
+#define MAX_DEV_COUNT 10
+#endif
 
 struct minesweeper_dev {
 	struct cdev cdev;
@@ -34,6 +37,7 @@ struct minesweeper_dev {
     char bomb_count;
     int *bomb_positions;
     bool game_loop;
+    dev_t devno;
 };
 
 /*

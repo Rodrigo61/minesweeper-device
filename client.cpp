@@ -13,7 +13,7 @@ static char board_h;
 
 int read_board(char board[255])
 {
-    int fd = open("/dev/minesweeper", O_RDONLY);
+    int fd = open("/dev/minesweeper0", O_RDONLY);
     if(fd < 0)
         return !printf("No device found! fd = %d\n", fd);
 
@@ -60,7 +60,7 @@ int main()
         }
         else
         {
-            int fd = open("/dev/minesweeper", O_WRONLY);
+            int fd = open("/dev/minesweeper0", O_WRONLY);
             if(fd < 0)
                 return !printf("No device found! fd = %d\n", fd);
 
