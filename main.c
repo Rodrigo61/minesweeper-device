@@ -27,7 +27,7 @@ int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
 
-int minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, int *eof, void *data)
+ssize_t minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, int *eof, void *data)
 {
   sprintf(buf, "teste");
   *eof = 1;
