@@ -27,16 +27,15 @@ int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
 
-ssize_t minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, int *eof, void *data)
+ssize_t minesweeper_read_procmem(struct file *f, char *buff, size_t size, loff_t *offset)
 {
-  sprintf(buf, "teste");
-  *eof = 1;
   return 5;
 }
 
 
 static const struct file_operations minesweeper_proc_fops =
 {
+  .owner = THIS_MODULE,
   .read = minesweeper_read_procmem,
 };
 
