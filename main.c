@@ -16,6 +16,7 @@
 
 #include "minesweeper.h"
 
+#define DBG_BUFF_SZ 4096
 
 // TODO: Add the possibility of setting row/col/bomb count on load time.
 
@@ -27,7 +28,7 @@ int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
 
-char debug_buffer[4096];
+char debug_buffer[DBG_BUFF_SZ];
 char *debug_ptr;
 int debug_offset=0;
 
@@ -39,7 +40,6 @@ int debug(const char *format, ...)
   va_start(args, format);
   result = vsprintf(debug_buffer+debug_offset, format, args);
   va_end(args);
-  debug_offset += result;
   return result;
 }
 
@@ -61,7 +61,6 @@ ssize_t minesweeper_read_procmem(struct file *filp, char *buff, size_t size, lof
 
 static int minesweeper_open_procmem(struct inode *nodep, struct file *filp)
 {
-  debug("Testando");
   return 0;
 }
 
@@ -95,12 +94,14 @@ void create_board(void)
 	int i;
 
 	printk("[[[[[MINESWEEPER]]]]] Creating board");
+  debug("Creating board\n");
 	if (!device.board)
 	{
 		device.board = kmalloc(sizeof(char) * BOARD_SZ, GFP_KERNEL);
 		if (!device.board)
 		{
 			printk("[[[[[MINESWEEPER]]]]] There is no memory enough to create a new board.");
+      debug("Not enough memory to create board\n");
 			return;
 		}
 	}
@@ -169,12 +170,14 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	if (!play_buf)
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to allocate play_buf");
+    debug("Failed to allocated play_buf");
 		return -EFAULT;
 	}
 
 	if (copy_from_user(play_buf, buf, count))
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to copy from user");
+    debug("Failed to copy data from user space\n");
 		kfree(play_buf);
 		return -EFAULT;
 	}
@@ -234,7 +237,7 @@ int minesweeper_init_module(void)
   debug_ptr = debug_buffer;
 	device.game_loop = false;
 	minesweeper_setup_cdev();
-  debug("Module initialized successfuly!");
+  debug("Module initialized successfuly\n");
 	return result;
 }
 
