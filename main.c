@@ -27,6 +27,19 @@ int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
 
+int minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, int *eof, void *data)
+{
+  sprintf(buf, "teste");
+  *eof = 1;
+  return 5;
+}
+
+
+static const struc file_operations minesweeper_proc_fops
+{
+  .read = minesweeper_read_procmem,
+};
+
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
 	printk("[[[[[MINESWEEPER]]]]] OPEN");
@@ -185,7 +198,7 @@ int minesweeper_init_module(void)
 		return result;
 	}
 
-  create_proc_read_entry("minesweepermem", 0 /* default mode */, NULL /* parent dir */, minesweeper_read_procmem,NULL /* client data */);
+  proc_create("minesweepermem", 0 /* default mode */, NULL /* parent dir */, minesweeper_proc_fops);
 	device.game_loop = false;
 	minesweeper_setup_cdev();
 
@@ -205,13 +218,6 @@ void minesweeper_cleanup_module(void)
   remove_proc_entry("minesweepermem", NULL);
 	cdev_del(&device.cdev);
 	unregister_chrdev_region(devno, device_count);
-}
-
-int minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, int *eof, void *data)
-{
-  sprintf(buf, "teste");
-  *eof = 1;
-  return 5;
 }
 
 module_init(minesweeper_init_module);
