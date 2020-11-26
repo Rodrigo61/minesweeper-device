@@ -26,9 +26,10 @@ struct minesweeper_dev device;
 int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
-char debug_buffer[80];
-char *debug_ptr;
 
+char debug_buffer[4096];
+char *debug_ptr;
+int debug_offset=0;
 
 int debug(const char *format, ...)
 {
@@ -36,8 +37,9 @@ int debug(const char *format, ...)
   va_list args;
 
   va_start(args, format);
-  result = vsprintf(debug_buffer, format, args);
+  result = vsprintf(debug_buffer+debug_offset, format, args);
   va_end(args);
+  debug_offset += result;
   return result;
 }
 
@@ -59,8 +61,7 @@ ssize_t minesweeper_read_procmem(struct file *filp, char *buff, size_t size, lof
 
 static int minesweeper_open_procmem(struct inode *nodep, struct file *filp)
 {
-  debug("Testando %s", "teste \n");
-  debug_ptr = debug_buffer;
+  debug("Testando");
   return 0;
 }
 
@@ -230,9 +231,10 @@ int minesweeper_init_module(void)
 	}
 
   proc_create("minesweepermem", 0 /* default mode */, NULL /* parent dir */, &minesweeper_proc_fops);
+  debug_ptr = debug_buffer;
 	device.game_loop = false;
 	minesweeper_setup_cdev();
-
+  debug("Module initialized successfuly!");
 	return result;
 }
 
