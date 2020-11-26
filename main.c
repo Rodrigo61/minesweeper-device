@@ -2,17 +2,17 @@
 #include <linux/moduleparam.h>
 #include <linux/init.h>
 
-#include <linux/kernel.h>	
-#include <linux/slab.h>		
-#include <linux/fs.h>		
-#include <linux/errno.h>	
-#include <linux/types.h>	
+#include <linux/kernel.h>
+#include <linux/slab.h>
+#include <linux/fs.h>
+#include <linux/errno.h>
+#include <linux/types.h>
 #include <linux/proc_fs.h>
-#include <linux/fcntl.h>	
+#include <linux/fcntl.h>
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
 
-#include <linux/uaccess.h>	
+#include <linux/uaccess.h>
 
 #include "minesweeper.h"
 
@@ -39,7 +39,7 @@ int minesweeper_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-void exec_play(int position) 
+void exec_play(int position)
 {
 	// TODO: Verify if a bomb has exploded and interrupt the game loop.
 	device.board[position] = OPEN_CELL;
@@ -50,7 +50,7 @@ void create_board(void)
 	int i;
 
 	printk("[[[[[MINESWEEPER]]]]] Creating board");
-	if (!device.board) 
+	if (!device.board)
 	{
 		device.board = kmalloc(sizeof(char) * BOARD_SZ, GFP_KERNEL);
 		if (!device.board)
@@ -64,12 +64,12 @@ void create_board(void)
 		device.board[i] = NOT_OPEN_CELL;
 }
 
-void generate_bomb_positions(void) 
+void generate_bomb_positions(void)
 {
 	int i;
 
 	printk("[[[[[MINESWEEPER]]]]] Generating bombs");
-	if (!device.bomb_positions) 
+	if (!device.bomb_positions)
 	{
 		device.bomb_positions = kmalloc(sizeof(int) * BOMB_COUNT, GFP_KERNEL);
 		if (!device.bomb_positions)
@@ -86,7 +86,7 @@ void generate_bomb_positions(void)
 	}
 }
 
-void restart_game(void) 
+void restart_game(void)
 {
 	generate_bomb_positions();
 	create_board();
@@ -127,21 +127,21 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		return -EFAULT;
 	}
 
-	if (copy_from_user(play_buf, buf, count)) 
+	if (copy_from_user(play_buf, buf, count))
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to copy from user");
 		kfree(play_buf);
 		return -EFAULT;
-	} 
+	}
 
 	play_buf[count] = '\0';
-	printk("[[[[[MINESWEEPER]]]]] WRITE, play_buf = %s", play_buf);	
+	printk("[[[[[MINESWEEPER]]]]] WRITE, play_buf = %s", play_buf);
 
 	if (kstrtol(play_buf, 10, &play) != 0)
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to convert play_buf");
 		kfree(play_buf);
-		return -EINVAL; 
+		return -EINVAL;
 	}
 
 	printk("[[[[[MINESWEEPER]]]]] WRITE, play = %ld\n", play);
@@ -164,10 +164,10 @@ struct file_operations minesweeper_fops = {
 static void minesweeper_setup_cdev(void)
 {
 	int err, devno = MKDEV(minesweeper_major, minesweeper_minor);
-    
+
 	cdev_init(&device.cdev, &minesweeper_fops);
 	device.cdev.owner = THIS_MODULE;
-	
+
 	err = cdev_add(&device.cdev, devno, device_count);
 	if (err)
 		printk("[[[[[MINESWEEPER]]]]] Error %d adding minesweeper", err);
@@ -185,6 +185,7 @@ int minesweeper_init_module(void)
 		return result;
 	}
 
+  create_proc_read_entry("minesweepermem", 0 /* default mode */, NULL /* parent dir */, minesweeper_read_procmem,NULL /* client data */);
 	device.game_loop = false;
 	minesweeper_setup_cdev();
 
@@ -201,8 +202,16 @@ void minesweeper_cleanup_module(void)
 		kfree(device.board);
 	if (device.bomb_positions)
 		kfree(device.bomb_positions);
+  remove_proc_entry("minesweepermem", NULL);
 	cdev_del(&device.cdev);
 	unregister_chrdev_region(devno, device_count);
+}
+
+int minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, int *eof, void *data)
+{
+  sprintf(buf, "teste");
+  *eof = 1;
+  return 5;
 }
 
 module_init(minesweeper_init_module);
