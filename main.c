@@ -124,7 +124,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	if (!play_buf)
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to allocate play_buf");
-		return 0;
+		return -EFAULT;
 	}
 
 	if (copy_from_user(play_buf, buf, count)) 
@@ -141,7 +141,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	{
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to convert play_buf");
 		kfree(play_buf);
-		return 0; // TODO: Search what would be the correct way of reporting this error.
+		return -EINVAL; 
 	}
 
 	printk("[[[[[MINESWEEPER]]]]] WRITE, play = %ld\n", play);
