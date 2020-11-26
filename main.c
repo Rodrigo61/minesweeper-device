@@ -35,7 +35,7 @@ int minesweeper_read_procmem(char *buf, char **start, off_t offset,int count, in
 }
 
 
-static const struc file_operations minesweeper_proc_fops
+static const struct file_operations minesweeper_proc_fops =
 {
   .read = minesweeper_read_procmem,
 };
@@ -198,7 +198,7 @@ int minesweeper_init_module(void)
 		return result;
 	}
 
-  proc_create("minesweepermem", 0 /* default mode */, NULL /* parent dir */, minesweeper_proc_fops);
+  proc_create("minesweepermem", 0 /* default mode */, NULL /* parent dir */, &minesweeper_proc_fops);
 	device.game_loop = false;
 	minesweeper_setup_cdev();
 
