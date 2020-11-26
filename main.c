@@ -26,16 +26,48 @@ struct minesweeper_dev device;
 int minesweeper_major;
 int minesweeper_minor = 0;
 int device_count = 1;
+char debug_buffer[80];
+char *debug_ptr;
 
-ssize_t minesweeper_read_procmem(struct file *f, char *buff, size_t size, loff_t *offset)
+
+int debug(const char *format, ...)
 {
-  return 5;
+  int result;
+  va_list args;
+
+  va_start(args, format);
+  result = vsprintf(debug_buffer, format, args);
+  va_end(args);
+  return result;
 }
 
+ssize_t minesweeper_read_procmem(struct file *filp, char *buff, size_t size, loff_t *offset)
+{
+  int written = 0;
+
+  if (*debug_ptr == 0) {return 0;}
+
+  while (size && *debug_ptr) {
+    put_user(*(debug_ptr++), buff++);
+
+    size--;
+    written++;
+  }
+
+  return written;
+}
+
+static int minesweeper_open_procmem(struct inode *nodep, struct file *filp)
+{
+  debug("Testando %s", "teste \n");
+  debug_ptr = debug_buffer;
+  return 0;
+}
 
 static const struct file_operations minesweeper_proc_fops =
 {
   .owner = THIS_MODULE,
+  .open = minesweeper_open_procmem,
   .read = minesweeper_read_procmem,
 };
 
