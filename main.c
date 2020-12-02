@@ -11,6 +11,7 @@
 #include <linux/fcntl.h>	
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
+#include <linux/list.h>
 
 #include <linux/uaccess.h>	
 
@@ -28,7 +29,17 @@ int minesweeper_minor = 0;
 int device_count = 1;
 char lost_str[] = "YOU LOST";
 char won_str[] = "YOU WON";
-int adj_cells[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+
+// Offset to ease the adjacency calculation. The first 4 values correspond to the 
+// 4-side adjacency, the next 4 the remaining to the 8-side adjacency.
+int adj_cells[8][2] = {{-1, 0}, {0, -1}, {0, 1}, {1, 0}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+
+struct queue_node {
+    struct list_head list;
+    int value;
+};
+
+LIST_HEAD(queue);
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -92,7 +103,7 @@ int surround_bomb_count(int position)
 	pos_i = get_position_row(position);
 	pos_j = get_position_col(position);
 
-	for (i = 0; i < 8; ++i)
+	for (i = 0; i < EIGHT_ADJ; ++i)
 	{
 		adj_i = pos_i + adj_cells[i][0];
 		adj_j = pos_j + adj_cells[i][1];
@@ -101,6 +112,54 @@ int surround_bomb_count(int position)
 	}
 		
 	return count;
+}
+
+/**
+ * Function that conducts a BFS to reveal all the blank cells (no bombs suround) within a limit.
+*/
+void reveal_blank_cells(int position, int reveal_count)
+{
+    struct queue_node *entry, *new_entry;
+	int curr_position, adj_position, i, pos_i, pos_j, adj_i, adj_j;
+
+	new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); // TODO: check kmalloc.
+	if (!new_entry)
+		return;
+	new_entry->value = position;
+	list_add_tail(&new_entry->list, &queue);
+
+	while (!list_empty(&queue) && reveal_count)
+	{
+		entry = list_first_entry(&queue, struct queue_node, list);
+		curr_position = entry->value;
+		list_del(queue.next);
+
+		pos_i = get_position_row(curr_position);
+		pos_j = get_position_col(curr_position);
+
+		for (i = 0; i < FOUR_ADJ && reveal_count; ++i)
+		{
+			adj_i = pos_i + adj_cells[i][0];
+			adj_j = pos_j + adj_cells[i][1];
+			adj_position = to_position(adj_i, adj_j);
+			if (valid_coords(adj_i, adj_j) && !has_bomb(adj_position))
+			{
+				device.board[adj_position] = surround_bomb_count(adj_position) + '0';
+				if (device.board[adj_position] == '0')
+				{
+					--reveal_count;
+					device.board[adj_position] = OPEN_CELL;
+					new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); // TODO: check kmalloc.
+					if (new_entry) 
+					{
+						new_entry->value = adj_position;
+						list_add_tail(&new_entry->list, &queue);
+					}
+					
+				}
+			}
+		}
+	}
 }
 
 void exec_play(int position) 
@@ -117,6 +176,8 @@ void exec_play(int position)
 	bomb_count = surround_bomb_count(position);
 	if (bomb_count > 0)
 		device.board[position] = bomb_count + '0';
+
+	reveal_blank_cells(position, 10);
 }
 
 void create_board(void)

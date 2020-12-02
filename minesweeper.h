@@ -22,6 +22,12 @@
 #ifndef OPEN_CELL
 #define OPEN_CELL ' '
 #endif
+#ifndef FOUR_ADJ
+#define FOUR_ADJ 4
+#endif
+#ifndef EIGHT_ADJ
+#define EIGHT_ADJ 8
+#endif
 
 #define NEW_GAME 0
 #define END_GAME 1
