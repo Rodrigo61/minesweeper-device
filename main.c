@@ -12,6 +12,7 @@
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
 #include <linux/list.h>
+#include <linux/random.h>
 
 #include <linux/uaccess.h>	
 
@@ -78,7 +79,7 @@ bool has_bomb(int position)
 
 bool valid_coords(int row, int col)
 {
-	return row >= 0 && row < ROW_COUNT && col > 0 && col < COL_COUNT;
+	return row >= 0 && row < ROW_COUNT && col >= 0 && col < COL_COUNT;
 }
 
 int get_position_row(int position)
@@ -88,7 +89,7 @@ int get_position_row(int position)
 
 int get_position_col(int position)
 {
-	return position % ROW_COUNT;
+	return position % COL_COUNT;
 }
 
 int to_position(int row, int col)
@@ -201,7 +202,9 @@ void create_board(void)
 
 void generate_bomb_positions(void) 
 {
-	int i;
+	int i, j;
+	unsigned int random_position;
+	bool already_used;
 
 	printk("[[[[[MINESWEEPER]]]]] Generating bombs");
 	if (!device.bomb_positions) 
@@ -214,17 +217,34 @@ void generate_bomb_positions(void)
 		}
 	}
 
-	// TODO: Use a random function to generate the bombs.
 	for (i = 1; i <= BOMB_COUNT; ++i)
 	{
-		device.bomb_positions[i - 1] = i * 3;
+		get_random_bytes(&random_position, sizeof(random_position));
+		random_position %= BOARD_SZ;
+
+		already_used = false;
+		for (j = 0; j < i - 1; ++j)
+			if (device.bomb_positions[j] == random_position)
+			{
+				already_used = true;
+				break;
+			}
+		
+		if (already_used)
+			--i;
+		else
+		{
+			device.bomb_positions[i - 1] = random_position;
+			device.board[random_position] = 'B';
+		}
+			
 	}
 }
 
 void restart_game(void) 
 {
-	generate_bomb_positions();
 	create_board();
+	generate_bomb_positions();
 	device.game_state = ONGOING_GAME;
 }
 
