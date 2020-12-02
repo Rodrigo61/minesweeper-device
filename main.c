@@ -20,9 +20,8 @@
 
 
 // TODO: Add the possibility of setting row/col/bomb count on load time.
-
 MODULE_AUTHOR("Rodrigo Amaral Franceschinelli");
-MODULE_LICENSE("Dual BSD/GPL"); // TODO: Which license?
+MODULE_LICENSE("Dual BSD/GPL");
 
 struct minesweeper_dev device;
 int minesweeper_major;
@@ -123,7 +122,7 @@ void reveal_blank_cells(int position, int reveal_count)
     struct queue_node *entry, *new_entry;
 	int curr_position, adj_position, i, pos_i, pos_j, adj_i, adj_j;
 
-	new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); // TODO: check kmalloc.
+	new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); 
 	if (!new_entry)
 		return;
 	new_entry->value = position;
@@ -150,7 +149,7 @@ void reveal_blank_cells(int position, int reveal_count)
 				{
 					--reveal_count;
 					device.board[adj_position] = OPEN_CELL;
-					new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); // TODO: check kmalloc.
+					new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); 
 					if (new_entry) 
 					{
 						new_entry->value = adj_position;
@@ -178,7 +177,7 @@ void exec_play(int position)
 	if (bomb_count > 0)
 		device.board[position] = bomb_count + '0';
 
-	reveal_blank_cells(position, 10);
+	reveal_blank_cells(position, BLANK_REVEAL_LIMIT);
 }
 
 void create_board(void)
@@ -233,11 +232,7 @@ void generate_bomb_positions(void)
 		if (already_used)
 			--i;
 		else
-		{
 			device.bomb_positions[i - 1] = random_position;
-			device.board[random_position] = 'B';
-		}
-			
 	}
 }
 

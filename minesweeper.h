@@ -28,6 +28,9 @@
 #ifndef EIGHT_ADJ
 #define EIGHT_ADJ 8
 #endif
+#ifndef BLANK_REVEAL_LIMIT
+#define BLANK_REVEAL_LIMIT 10
+#endif
 
 #define NEW_GAME 0
 #define END_GAME 1
