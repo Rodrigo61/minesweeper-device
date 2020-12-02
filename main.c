@@ -115,9 +115,9 @@ int surround_bomb_count(int position)
 }
 
 /**
- * Function that conducts a BFS to reveal all the blank cells (no bombs suround) within a limit.
+ * Function that conducts a BFS to reveal all the blank cells (no bombs around) up to a limit.
 */
-void reveal_blank_cells(int position, int reveal_count)
+void reveal_blank_cells(int position, int reveal_limit)
 {
     struct queue_node *entry, *new_entry;
 	int curr_position, adj_position, i, pos_i, pos_j, adj_i, adj_j;
@@ -128,7 +128,7 @@ void reveal_blank_cells(int position, int reveal_count)
 	new_entry->value = position;
 	list_add_tail(&new_entry->list, &queue);
 
-	while (!list_empty(&queue) && reveal_count)
+	while (!list_empty(&queue) && reveal_limit)
 	{
 		entry = list_first_entry(&queue, struct queue_node, list);
 		curr_position = entry->value;
@@ -137,7 +137,7 @@ void reveal_blank_cells(int position, int reveal_count)
 		pos_i = get_position_row(curr_position);
 		pos_j = get_position_col(curr_position);
 
-		for (i = 0; i < FOUR_ADJ && reveal_count; ++i)
+		for (i = 0; i < FOUR_ADJ && reveal_limit; ++i)
 		{
 			adj_i = pos_i + adj_cells[i][0];
 			adj_j = pos_j + adj_cells[i][1];
@@ -147,7 +147,7 @@ void reveal_blank_cells(int position, int reveal_count)
 				device.board[adj_position] = surround_bomb_count(adj_position) + '0';
 				if (device.board[adj_position] == '0')
 				{
-					--reveal_count;
+					--reveal_limit;
 					device.board[adj_position] = OPEN_CELL;
 					new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); 
 					if (new_entry) 
