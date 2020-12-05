@@ -8,8 +8,8 @@
 #define MAX_BOARD_SZ 255*255
 using namespace std;
 
-static char board_w;
-static char board_h;
+int board_w;
+int board_h;
 
 int read_board(char board[255])
 {
@@ -19,9 +19,9 @@ int read_board(char board[255])
 
     char buf[MAX_BOARD_SZ + BOARD_DIM_COUNT]; 
     ssize_t read_count = read(fd, buf, MAX_BOARD_SZ + BOARD_DIM_COUNT);
-    board_w = buf[0];
-    board_h = buf[1];
-    std::copy(buf + BOARD_DIM_COUNT, buf + ((int)board_w * (int)board_h) + BOARD_DIM_COUNT, board);
+    board_w = (int)buf[0];
+    board_h = (int)buf[1];
+    copy(buf + BOARD_DIM_COUNT, buf + (board_w * board_h) + BOARD_DIM_COUNT, board);
     close(fd);
     return read_count;
 }
