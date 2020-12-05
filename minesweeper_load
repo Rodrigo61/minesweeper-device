@@ -18,7 +18,7 @@ major=$(awk "\$2==\"$module\" {print \$1}" /proc/devices)
 
 # Remove stalespecial nodes and replace them, then give gid and perms
 # Usually the script is shorter, it's scull that has several devices in it.
-rm -r /dev/${device}[0-9]
+rm -rf /dev/${device}[0-9]
 
 for i in 0 1 2 3 4 5 6 7 8 9;
 do
