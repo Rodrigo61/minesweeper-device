@@ -25,6 +25,19 @@
 #ifndef OPEN_CELL
 #define OPEN_CELL ' '
 #endif
+#ifndef FOUR_ADJ
+#define FOUR_ADJ 4
+#endif
+#ifndef EIGHT_ADJ
+#define EIGHT_ADJ 8
+#endif
+#ifndef BLANK_REVEAL_LIMIT
+#define BLANK_REVEAL_LIMIT 10
+#endif
+
+#define NEW_GAME 0
+#define END_GAME 1
+#define ONGOING_GAME 2
 
 struct minesweeper_dev {
 	struct cdev cdev;
@@ -33,7 +46,7 @@ struct minesweeper_dev {
     char board_h;
     char bomb_count;
     int *bomb_positions;
-    bool game_loop;
+    int game_state;
 };
 
 /*
