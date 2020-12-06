@@ -143,6 +143,7 @@ void reveal_blank_cells(int position, int reveal_limit)
 		entry = list_first_entry(&queue, struct queue_node, list);
 		curr_position = entry->value;
 		list_del(queue.next);
+		kfree(entry);
 
 		pos_i = get_position_row(curr_position);
 		pos_j = get_position_col(curr_position);
@@ -169,6 +170,14 @@ void reveal_blank_cells(int position, int reveal_limit)
 				}
 			}
 		}
+	}
+
+	// Clean the queue.
+	while (!list_empty(&queue))
+	{
+		entry = list_first_entry(&queue, struct queue_node, list);
+		list_del(queue.next);
+		kfree(entry);
 	}
 }
 
@@ -282,7 +291,7 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 		restart_game();
 
 	prepend_board_dimensions(write_buf);
-	if (copy_to_user(buf, write_buf, BOARD_SZ)) 
+	if (copy_to_user(buf, write_buf, write_size)) 
 		return -EFAULT;
 
 	kfree(write_buf);
