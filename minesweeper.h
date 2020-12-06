@@ -28,16 +28,30 @@
 #ifndef MAX_DEV_COUNT
 #define MAX_DEV_COUNT 10
 #endif
+#ifndef FOUR_ADJ
+#define FOUR_ADJ 4
+#endif
+#ifndef EIGHT_ADJ
+#define EIGHT_ADJ 8
+#endif
+#ifndef BLANK_REVEAL_LIMIT
+#define BLANK_REVEAL_LIMIT 10
+#endif
+
+#define NEW_GAME 0
+#define END_GAME 1
+#define ONGOING_GAME 2
 
 struct minesweeper_dev {
 	struct cdev cdev;
     char *board;
     char board_w;
     char board_h;
+    int board_size;
     char bomb_count;
     int *bomb_positions;
-    bool game_loop;
     dev_t devno;
+    int game_state;
 };
 
 /*

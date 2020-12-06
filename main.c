@@ -11,6 +11,8 @@
 #include <linux/fcntl.h>	
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
+#include <linux/list.h>
+#include <linux/random.h>
 
 #include <linux/uaccess.h>	
 #include <linux/moduleparam.h>
@@ -19,9 +21,8 @@
 
 
 // TODO: Add the possibility of setting row/col/bomb count on load time.
-
 MODULE_AUTHOR("Rodrigo Amaral Franceschinelli");
-MODULE_LICENSE("Dual BSD/GPL"); // TODO: Which license?
+MODULE_LICENSE("Dual BSD/GPL");
 
 // struct minesweeper_dev device;
 struct minesweeper_dev devices[MAX_DEV_COUNT];
@@ -33,10 +34,23 @@ static int board_w, board_h, bomb_count;
 module_param(board_w, int, S_IRUGO);
 module_param(board_h, int, S_IRUGO);
 module_param(bomb_count, int, S_IRUGO);
-
 MODULE_PARM_DESC(board_w, "Width of the minesweeper board");
 MODULE_PARM_DESC(board_h, "Height of the minesweeper board");
 MODULE_PARM_DESC(bomb_count, "Count of bombs in minesweeper board");
+
+char lost_str[] = "YOU LOST";
+char won_str[] = "YOU WON";
+
+// Offset to ease the adjacency calculation. The first 4 values correspond to the 
+// 4-side adjacency, the next 4 the remaining to the 8-side adjacency.
+int adj_cells[8][2] = {{-1, 0}, {0, -1}, {0, 1}, {1, 0}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+
+struct queue_node {
+    struct list_head list;
+    int value;
+};
+
+LIST_HEAD(queue);
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
@@ -50,10 +64,131 @@ int minesweeper_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+void set_lost(void) 
+{
+	devices[0].game_state = END_GAME;
+	memset(devices[0].board, 0, sizeof(char) * devices[0].board_size);
+	memcpy(devices[0].board, lost_str, sizeof(lost_str));
+}
+
+void display_won(void) 
+{
+	devices[0].game_state = END_GAME;
+	memset(devices[0].board, 0, sizeof(char) * devices[0].board_size);
+	memcpy(devices[0].board, won_str, sizeof(won_str));
+}
+
+bool has_bomb(int position)
+{
+	int i;
+	for (i = 0; i < devices[0].bomb_count; ++i)
+		if (devices[0].bomb_positions[i] == position)
+			return true;
+	return false;
+}
+
+bool valid_coords(int row, int col)
+{
+	return row >= 0 && row < devices[0].board_h && col >= 0 && col < devices[0].board_w;
+}
+
+int get_position_row(int position)
+{
+	return position / devices[0].board_h;
+}
+
+int get_position_col(int position)
+{
+	return position % devices[0].board_w;
+}
+
+int to_position(int row, int col)
+{
+	return row * devices[0].board_w + col;
+}
+
+int surround_bomb_count(int position)
+{
+	int i, pos_i, pos_j, adj_i, adj_j, count = 0;
+
+	pos_i = get_position_row(position);
+	pos_j = get_position_col(position);
+
+	for (i = 0; i < EIGHT_ADJ; ++i)
+	{
+		adj_i = pos_i + adj_cells[i][0];
+		adj_j = pos_j + adj_cells[i][1];
+		if (valid_coords(adj_i, adj_j) && has_bomb(to_position(adj_i, adj_j)))
+			count++;
+	}
+		
+	return count;
+}
+
+/**
+ * Function that conducts a BFS to reveal all the blank cells (no bombs around) up to a limit.
+*/
+void reveal_blank_cells(int position, int reveal_limit)
+{
+    struct queue_node *entry, *new_entry;
+	int curr_position, adj_position, i, pos_i, pos_j, adj_i, adj_j;
+
+	new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); 
+	if (!new_entry)
+		return;
+	new_entry->value = position;
+	list_add_tail(&new_entry->list, &queue);
+
+	while (!list_empty(&queue) && reveal_limit)
+	{
+		entry = list_first_entry(&queue, struct queue_node, list);
+		curr_position = entry->value;
+		list_del(queue.next);
+
+		pos_i = get_position_row(curr_position);
+		pos_j = get_position_col(curr_position);
+
+		for (i = 0; i < FOUR_ADJ && reveal_limit; ++i)
+		{
+			adj_i = pos_i + adj_cells[i][0];
+			adj_j = pos_j + adj_cells[i][1];
+			adj_position = to_position(adj_i, adj_j);
+			if (valid_coords(adj_i, adj_j) && !has_bomb(adj_position))
+			{
+				devices[0].board[adj_position] = surround_bomb_count(adj_position) + '0';
+				if (devices[0].board[adj_position] == '0')
+				{
+					--reveal_limit;
+					devices[0].board[adj_position] = OPEN_CELL;
+					new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); 
+					if (new_entry) 
+					{
+						new_entry->value = adj_position;
+						list_add_tail(&new_entry->list, &queue);
+					}
+					
+				}
+			}
+		}
+	}
+}
+
 void exec_play(int position) 
 {
-	// TODO: Verify if a bomb has exploded and interrupt the game loop.
+	int surrouding_bomb_count;
+	
 	devices[0].board[position] = OPEN_CELL;
+	if (has_bomb(position))
+	{
+		set_lost();
+		return;
+	}
+
+	surrouding_bomb_count = surround_bomb_count(position);
+	if (surrouding_bomb_count > 0)
+		devices[0].board[position] = surrouding_bomb_count + '0';
+
+	reveal_blank_cells(position, BLANK_REVEAL_LIMIT);
 }
 
 void create_board(struct minesweeper_dev *device)
@@ -78,12 +213,14 @@ void create_board(struct minesweeper_dev *device)
 
 void generate_bomb_positions(struct minesweeper_dev *device) 
 {
-	int i;
+	int i, j;
+	unsigned int random_position;
+	bool already_used;
 
 	printk("[[[[[MINESWEEPER]]]]] Generating bombs");
 	if (!device->bomb_positions) 
 	{
-		device->bomb_positions = kmalloc(sizeof(int) * bomb_count, GFP_KERNEL);
+		device->bomb_positions = kmalloc(sizeof(int) * device->bomb_count, GFP_KERNEL);
 		if (!device->bomb_positions)
 		{
 			printk("[[[[[MINESWEEPER]]]]] There is no memory enough to create the list of bomb positions.");
@@ -92,9 +229,23 @@ void generate_bomb_positions(struct minesweeper_dev *device)
 	}
 
 	// TODO: Use a random function to generate the bombs.
-	for (i = 1; i <= bomb_count; ++i)
+	for (i = 1; i <= device->bomb_count; ++i)
 	{
-		device->bomb_positions[i - 1] = i * 3;
+		get_random_bytes(&random_position, sizeof(random_position));
+		random_position %= device->board_size;
+
+		already_used = false;
+		for (j = 0; j < i - 1; ++j)
+			if (device->bomb_positions[j] == random_position)
+			{
+				already_used = true;
+				break;
+			}
+		
+		if (already_used)
+			--i;
+		else
+			device->bomb_positions[i - 1] = random_position;
 	}
 }
 
@@ -102,7 +253,7 @@ void restart_game(struct minesweeper_dev *device)
 {
 	generate_bomb_positions(device);
 	create_board(device);
-	device->game_loop = true;
+	device->game_state = ONGOING_GAME;
 }
 
 void prepend_board_dimensions(char *buf, struct minesweeper_dev device)
@@ -130,15 +281,19 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 	char *write_buf = kmalloc(write_size * sizeof(char), GFP_KERNEL);
 	printk("[[[[[MINESWEEPER]]]]] READ");
 
-	if (!device.game_loop)
+	if (device.game_state == NEW_GAME)
 		restart_game(&devices[0]);
 
-	printk("[[[[[MINESWEEPER]]]]] WRITE_SIZE (%d)", write_size);
+	printk("[[[[[MINESWEEPER]]]]] READ (write_size = %d)", write_size);
 	prepend_board_dimensions(write_buf, device);
-	if (copy_to_user(buf, write_buf, write_size)) {
+	if (copy_to_user(buf, write_buf, write_size))
 		return -EFAULT;
-	}
+
 	kfree(write_buf);
+
+	if (device.game_state == END_GAME)
+		device.game_state = NEW_GAME;
+	
 	return write_size;
 }
 
@@ -148,7 +303,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	char *play_buf;
 	long play;
 
-	printk("[[[[[MINESWEEPER]]]]] WRITE");
+	printk("[[[[[MINESWEEPER]]]]] WRITE (count=%ld)", count);
 
 	play_buf = kmalloc(sizeof(char) * count, GFP_KERNEL);
 	if (!play_buf)
@@ -156,6 +311,9 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		printk("[[[[[MINESWEEPER]]]]] WRITE, failed to allocate play_buf");
 		return 0;
 	}
+
+	if (devices[0].game_state == NEW_GAME)
+		restart_game(&devices[0]);
 
 	if (copy_from_user(play_buf, buf, count)) 
 	{
@@ -193,9 +351,9 @@ struct file_operations minesweeper_fops = {
 
 void init_device_board(struct minesweeper_dev *dev)
 {
-	dev->game_loop = false;
 	dev->board_w = (char)board_w;
 	dev->board_h = (char)board_h;
+	dev->board_size = board_w * board_h;
 	dev->bomb_count = (char)bomb_count;
 }
 
