@@ -20,11 +20,9 @@
 #include "minesweeper.h"
 
 
-// TODO: Add the possibility of setting row/col/bomb count on load time.
 MODULE_AUTHOR("Rodrigo Amaral Franceschinelli");
 MODULE_LICENSE("Dual BSD/GPL");
 
-// struct minesweeper_dev device;
 struct minesweeper_dev devices[MAX_DEV_COUNT];
 int minesweeper_major;
 int minesweeper_minor = 0;
@@ -54,7 +52,11 @@ LIST_HEAD(queue);
 
 int minesweeper_open(struct inode *inode, struct file *filp)
 {
+	struct minesweeper_dev *dev;
+
 	printk("[[[[[MINESWEEPER]]]]] OPEN");
+	dev = container_of(inode->i_cdev, struct minesweeper_dev, cdev);
+	filp->private_data = dev; /* for other methods */
 	return 0;
 }
 
@@ -64,61 +66,61 @@ int minesweeper_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-void set_lost(void) 
+void set_lost(struct minesweeper_dev *device) 
 {
-	devices[0].game_state = END_GAME;
-	memset(devices[0].board, 0, sizeof(char) * devices[0].board_size);
-	memcpy(devices[0].board, lost_str, sizeof(lost_str));
+	device->game_state = END_GAME;
+	memset(device->board, 0, sizeof(char) * device->board_size);
+	memcpy(device->board, lost_str, sizeof(lost_str));
 }
 
-void display_won(void) 
+void display_won(struct minesweeper_dev *device) 
 {
-	devices[0].game_state = END_GAME;
-	memset(devices[0].board, 0, sizeof(char) * devices[0].board_size);
-	memcpy(devices[0].board, won_str, sizeof(won_str));
+	device->game_state = END_GAME;
+	memset(devices->board, 0, sizeof(char) * device->board_size);
+	memcpy(devices->board, won_str, sizeof(won_str));
 }
 
-bool has_bomb(int position)
+bool has_bomb(int position, struct minesweeper_dev *device)
 {
 	int i;
-	for (i = 0; i < devices[0].bomb_count; ++i)
-		if (devices[0].bomb_positions[i] == position)
+	for (i = 0; i < device->bomb_count; ++i)
+		if (device->bomb_positions[i] == position)
 			return true;
 	return false;
 }
 
-bool valid_coords(int row, int col)
+bool valid_coords(int row, int col, struct minesweeper_dev *device)
 {
-	return row >= 0 && row < devices[0].board_h && col >= 0 && col < devices[0].board_w;
+	return row >= 0 && row < device->board_h && col >= 0 && col < device->board_w;
 }
 
-int get_position_row(int position)
+int get_position_row(int position, struct minesweeper_dev *device)
 {
-	return position / devices[0].board_h;
+	return position / device->board_h;
 }
 
-int get_position_col(int position)
+int get_position_col(int position, struct minesweeper_dev *device)
 {
-	return position % devices[0].board_w;
+	return position % device->board_w;
 }
 
-int to_position(int row, int col)
+int to_position(int row, int col, struct minesweeper_dev *device)
 {
-	return row * devices[0].board_w + col;
+	return row * device->board_w + col;
 }
 
-int surround_bomb_count(int position)
+int surround_bomb_count(int position, struct minesweeper_dev *device)
 {
 	int i, pos_i, pos_j, adj_i, adj_j, count = 0;
 
-	pos_i = get_position_row(position);
-	pos_j = get_position_col(position);
+	pos_i = get_position_row(position, device);
+	pos_j = get_position_col(position, device);
 
 	for (i = 0; i < EIGHT_ADJ; ++i)
 	{
 		adj_i = pos_i + adj_cells[i][0];
 		adj_j = pos_j + adj_cells[i][1];
-		if (valid_coords(adj_i, adj_j) && has_bomb(to_position(adj_i, adj_j)))
+		if (valid_coords(adj_i, adj_j, device) && has_bomb(to_position(adj_i, adj_j, device), device))
 			count++;
 	}
 		
@@ -128,7 +130,7 @@ int surround_bomb_count(int position)
 /**
  * Function that conducts a BFS to reveal all the blank cells (no bombs around) up to a limit.
 */
-void reveal_blank_cells(int position, int reveal_limit)
+void reveal_blank_cells(int position, int reveal_limit, struct minesweeper_dev *device)
 {
     struct queue_node *entry, *new_entry;
 	int curr_position, adj_position, i, pos_i, pos_j, adj_i, adj_j;
@@ -145,21 +147,21 @@ void reveal_blank_cells(int position, int reveal_limit)
 		curr_position = entry->value;
 		list_del(queue.next);
 
-		pos_i = get_position_row(curr_position);
-		pos_j = get_position_col(curr_position);
+		pos_i = get_position_row(curr_position, device);
+		pos_j = get_position_col(curr_position, device);
 
 		for (i = 0; i < FOUR_ADJ && reveal_limit; ++i)
 		{
 			adj_i = pos_i + adj_cells[i][0];
 			adj_j = pos_j + adj_cells[i][1];
-			adj_position = to_position(adj_i, adj_j);
-			if (valid_coords(adj_i, adj_j) && !has_bomb(adj_position))
+			adj_position = to_position(adj_i, adj_j, device);
+			if (valid_coords(adj_i, adj_j, device) && !has_bomb(adj_position, device))
 			{
-				devices[0].board[adj_position] = surround_bomb_count(adj_position) + '0';
-				if (devices[0].board[adj_position] == '0')
+				device->board[adj_position] = surround_bomb_count(adj_position, device) + '0';
+				if (device->board[adj_position] == '0')
 				{
 					--reveal_limit;
-					devices[0].board[adj_position] = OPEN_CELL;
+					device->board[adj_position] = OPEN_CELL;
 					new_entry = kmalloc(sizeof(struct queue_node), GFP_KERNEL); 
 					if (new_entry) 
 					{
@@ -173,22 +175,22 @@ void reveal_blank_cells(int position, int reveal_limit)
 	}
 }
 
-void exec_play(int position) 
+void exec_play(int position, struct minesweeper_dev *device) 
 {
 	int surrouding_bomb_count;
 	
-	devices[0].board[position] = OPEN_CELL;
-	if (has_bomb(position))
+	device->board[position] = OPEN_CELL;
+	if (has_bomb(position, device))
 	{
-		set_lost();
+		set_lost(device);
 		return;
 	}
 
-	surrouding_bomb_count = surround_bomb_count(position);
+	surrouding_bomb_count = surround_bomb_count(position, device);
 	if (surrouding_bomb_count > 0)
-		devices[0].board[position] = surrouding_bomb_count + '0';
+		device->board[position] = surrouding_bomb_count + '0';
 
-	reveal_blank_cells(position, BLANK_REVEAL_LIMIT);
+	reveal_blank_cells(position, BLANK_REVEAL_LIMIT, device);
 }
 
 void create_board(struct minesweeper_dev *device)
@@ -256,16 +258,16 @@ void restart_game(struct minesweeper_dev *device)
 	device->game_state = ONGOING_GAME;
 }
 
-void prepend_board_dimensions(char *buf, struct minesweeper_dev device)
+void prepend_board_dimensions(char *buf, struct minesweeper_dev *device)
 {
-	int board_size = device.board_w * device.board_h;
+	int board_size = device->board_w * device->board_h;
 	size_t i;
-	buf[0] = device.board_w;
-	buf[1] = device.board_h;
+	buf[0] = device->board_w;
+	buf[1] = device->board_h;
 	
 	for (i = 0; i < board_size; ++i)
 	{
-		buf[i + BOARD_DIM_COUNT] = device.board[i];
+		buf[i + BOARD_DIM_COUNT] = device->board[i];
 	}
 }
 
@@ -275,14 +277,15 @@ void prepend_board_dimensions(char *buf, struct minesweeper_dev device)
 ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-	struct minesweeper_dev device = devices[0];
-	int board_size = device.board_w * device.board_h;
+	struct minesweeper_dev *device = filp->private_data;
+	int board_size = device->board_w * device->board_h;
 	int write_size = board_size + BOARD_DIM_COUNT;
 	char *write_buf = kmalloc(write_size * sizeof(char), GFP_KERNEL);
+
 	printk("[[[[[MINESWEEPER]]]]] READ");
 
-	if (device.game_state == NEW_GAME)
-		restart_game(&devices[0]);
+	if (device->game_state == NEW_GAME)
+		restart_game(device);
 
 	printk("[[[[[MINESWEEPER]]]]] READ (write_size = %d)", write_size);
 	prepend_board_dimensions(write_buf, device);
@@ -291,8 +294,8 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 
 	kfree(write_buf);
 
-	if (device.game_state == END_GAME)
-		device.game_state = NEW_GAME;
+	if (device->game_state == END_GAME)
+		device->game_state = NEW_GAME;
 	
 	return write_size;
 }
@@ -302,6 +305,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 {
 	char *play_buf;
 	long play;
+	struct minesweeper_dev *device = filp->private_data;
 
 	printk("[[[[[MINESWEEPER]]]]] WRITE (count=%ld)", count);
 
@@ -312,8 +316,8 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 		return 0;
 	}
 
-	if (devices[0].game_state == NEW_GAME)
-		restart_game(&devices[0]);
+	if (device->game_state == NEW_GAME)
+		restart_game(device);
 
 	if (copy_from_user(play_buf, buf, count)) 
 	{
@@ -334,7 +338,7 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 
 	printk("[[[[[MINESWEEPER]]]]] WRITE, play = %ld\n", play);
 
-	exec_play(play);
+	exec_play(play, device);
 	kfree(play_buf);
 
 	printk("[[[[[MINESWEEPER]]]]] SUCCESSFUL WRITE\n");
@@ -387,7 +391,7 @@ int minesweeper_init_module(void)
 	for (i_minor = 0; i_minor < MAX_DEV_COUNT; i_minor++) {
 		minesweeper_setup_cdev(&devices[i_minor], i_minor);
 	}
-	printk("[[[[[MINESWEEPER]]]]] board (%d, %d)", (int)devices[0].board_w, (int)devices[0].board_h);
+	printk("[[[[[MINESWEEPER]]]]] INITIATED");
 	return result;
 }
 
