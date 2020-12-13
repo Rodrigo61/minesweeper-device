@@ -25,6 +25,9 @@
 #ifndef OPEN_CELL
 #define OPEN_CELL ' '
 #endif
+#ifndef MAX_DEV_COUNT
+#define MAX_DEV_COUNT 10
+#endif
 #ifndef FOUR_ADJ
 #define FOUR_ADJ 4
 #endif
@@ -44,8 +47,10 @@ struct minesweeper_dev {
     char *board;
     char board_w;
     char board_h;
+    int board_size;
     char bomb_count;
     int *bomb_positions;
+    dev_t devno;
     int game_state;
 };
 

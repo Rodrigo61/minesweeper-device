@@ -6,4 +6,4 @@ device="minesweeper"
 rmmod $module || exit 1
 
 # Remove special nodes
-rm -f /dev/${device}
+rm -rf /dev/${device}[0-9]

@@ -78,7 +78,7 @@ bool play(int i, int j)
 
 void open_device()
 {
-    device_fd = open("/dev/minesweeper", O_RDWR);
+    device_fd = open("/dev/minesweeper0", O_RDWR);
     if(device_fd < 0)
     {
         printf("No device found! fd = %d\n", device_fd);
