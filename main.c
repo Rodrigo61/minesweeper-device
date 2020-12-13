@@ -146,6 +146,7 @@ void reveal_blank_cells(int position, int reveal_limit, struct minesweeper_dev *
 		entry = list_first_entry(&queue, struct queue_node, list);
 		curr_position = entry->value;
 		list_del(queue.next);
+		kfree(entry);
 
 		pos_i = get_position_row(curr_position, device);
 		pos_j = get_position_col(curr_position, device);
@@ -172,6 +173,14 @@ void reveal_blank_cells(int position, int reveal_limit, struct minesweeper_dev *
 				}
 			}
 		}
+	}
+
+	// Clean the queue.
+	while (!list_empty(&queue))
+	{
+		entry = list_first_entry(&queue, struct queue_node, list);
+		list_del(queue.next);
+		kfree(entry);
 	}
 }
 
