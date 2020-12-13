@@ -1,6 +1,5 @@
 #!/bin/sh
 module="minesweeper"
-device="minesweeper"
 mode="777"
 
 # Group: since distributions do it differently, look for wheel or use staff
@@ -10,20 +9,12 @@ else
     group="wheel"
 fi
 
-# Invoke insmod
-insmod ./$module.ko board_w=$1 board_h=$2 bomb_count=$3 || exit 1
-
 # Retrieve the major number
 major=$(awk "\$2==\"$module\" {print \$1}" /proc/devices)
 
 # Remove stalespecial nodes and replace them, then give gid and perms
 # Usually the script is shorter, it's scull that has several devices in it.
-rm -rf /dev/${device}[0-9]
 
-for i in 0 1 2 3 4 5 6 7 8 9;
-do
-    mknod /dev/${device}$i c $major $i;
-done
-
-chgrp $group /dev/${device}[0-9];
-chmod $mode  /dev/${device}[0-9];
+mknod /dev/${1} c $major 0
+chgrp $group /dev/${1}
+chmod $mode  /dev/${1}

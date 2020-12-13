@@ -1,0 +1,5 @@
+#!/bin/sh
+module="minesweeper"
+
+# Invoke rmmod
+rmmod $module || exit 1
