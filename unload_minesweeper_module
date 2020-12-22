@@ -1,9 +1,5 @@
 #!/bin/sh
 module="minesweeper"
-device="minesweeper"
 
 # Invoke rmmod
 rmmod $module || exit 1
-
-# Remove special nodes
-rm -f /dev/${device}
