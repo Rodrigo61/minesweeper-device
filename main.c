@@ -452,6 +452,8 @@ int minesweeper_init_module(void)
 	for (i_minor = 0; i_minor < MAX_DEV_COUNT; i_minor++) {
 		minesweeper_setup_cdev(&devices[i_minor], i_minor);
 	}
+  proc_create("minesweepermem", 0 /* default mode */, NULL /* parent dir */, &minesweeper_proc_fops);
+  debug_ptr = debug_buffer;
 	debug("[[[[[MINESWEEPER]]]]] INITIATED");
 	return result;
 }
