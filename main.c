@@ -471,7 +471,8 @@ void minesweeper_cleanup_module(void)
 		cdev_del(&devices[0].cdev);
 		debug("[[[[[MINESWEEPER]]]]] device (%d, %d) unregistered", minesweeper_major, minor);
 	}
-	unregister_chrdev_region(devices[0].devno, MAX_DEV_COUNT);
+	remove_proc_entry("minesweepermem", NULL);
+  unregister_chrdev_region(devices[0].devno, MAX_DEV_COUNT);
 	debug("[[[[[MINESWEEPER]]]]] CLEAN UP");
 }
 
