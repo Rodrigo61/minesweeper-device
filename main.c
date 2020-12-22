@@ -64,6 +64,8 @@ int debug(const char *format, ...)
   // If the message would overflow the buffer, wraps around and overwrites it
   if(strlen(format)+debug_offset > DBG_BUFF_SZ){
     debug_offset = 0;
+    //Clears the buffer
+    memset(debug_buffer, 0, DBG_BUFF_SZ);
   }
   result = vsprintf(debug_buffer+debug_offset, format, args);
   debug_offset += result;
@@ -103,7 +105,7 @@ int minesweeper_open(struct inode *inode, struct file *filp)
 {
 	struct minesweeper_dev *dev;
 
-	debug("[[[[[MINESWEEPER]]]]] OPEN");
+	debug("OPEN\n");
 	dev = container_of(inode->i_cdev, struct minesweeper_dev, cdev);
 	filp->private_data = dev; /* for other methods */
 	return 0;
@@ -111,7 +113,7 @@ int minesweeper_open(struct inode *inode, struct file *filp)
 
 int minesweeper_release(struct inode *inode, struct file *filp)
 {
-	debug("[[[[[MINESWEEPER]]]]] RELEASE");
+	debug("RELEASE\n");
 	return 0;
 }
 
@@ -256,13 +258,13 @@ void create_board(struct minesweeper_dev *device)
 	int i;
 	unsigned long board_size = device->board_w * device->board_h;
 
-	debug("[[[[[MINESWEEPER]]]]] Creating board");
+	debug("Creating board\n");
 	if (!device->board) 
 	{
 		device->board = kmalloc(sizeof(char) * board_size, GFP_KERNEL);
 		if (!device->board)
 		{
-			debug("[[[[[MINESWEEPER]]]]] There is no memory enough to create a new board.");
+			debug("There is no memory enough to create a new board.\n");
       debug("Not enough memory to create board\n");
 			return;
 		}
@@ -278,13 +280,13 @@ void generate_bomb_positions(struct minesweeper_dev *device)
 	unsigned int random_position;
 	bool already_used;
 
-	debug("[[[[[MINESWEEPER]]]]] Generating bombs");
+	debug("Generating bombs\n");
 	if (!device->bomb_positions) 
 	{
 		device->bomb_positions = kmalloc(sizeof(int) * device->bomb_count, GFP_KERNEL);
 		if (!device->bomb_positions)
 		{
-			debug("[[[[[MINESWEEPER]]]]] There is no memory enough to create the list of bomb positions.");
+			debug("There is no memory enough to create the list of bomb positions.\n");
 			return;
 		}
 	}
@@ -341,12 +343,12 @@ ssize_t minesweeper_read(struct file *filp, char __user *buf, size_t count,
 	int write_size = board_size + BOARD_DIM_COUNT;
 	char *write_buf = kmalloc(write_size * sizeof(char), GFP_KERNEL);
 
-	debug("[[[[[MINESWEEPER]]]]] READ");
+	debug("READ\n");
 
 	if (device->game_state == NEW_GAME)
 		restart_game(device);
 
-	debug("[[[[[MINESWEEPER]]]]] READ (write_size = %d)", write_size);
+	debug("READ (write_size = %d)\n", write_size);
 	prepend_board_dimensions(write_buf, device);
 	if (copy_to_user(buf, write_buf, write_size))
 		return -EFAULT;
@@ -366,13 +368,13 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 	long play;
 	struct minesweeper_dev *device = filp->private_data;
 
-	debug("[[[[[MINESWEEPER]]]]] WRITE (count=%ld)", count);
+	debug("WRITE (count=%ld)\n", count);
 
 	play_buf = kmalloc(sizeof(char) * count, GFP_KERNEL);
 	if (!play_buf)
 	{
-		debug("[[[[[MINESWEEPER]]]]] WRITE, failed to allocate play_buf");
-    debug("Failed to allocated play_buf");
+		debug("WRITE, failed to allocate play_buf\n");
+    debug("Failed to allocated play_buf\n");
 		return -EFAULT;
 	}
 
@@ -381,28 +383,28 @@ ssize_t minesweeper_write(struct file *filp, const char __user *buf, size_t coun
 
 	if (copy_from_user(play_buf, buf, count)) 
 	{
-		debug("[[[[[MINESWEEPER]]]]] WRITE, failed to copy from user");
+		debug("WRITE, failed to copy from user\n");
     debug("Failed to copy data from user space\n");
 		kfree(play_buf);
 		return -EFAULT;
 	}
 
 	play_buf[count] = '\0';
-	debug("[[[[[MINESWEEPER]]]]] WRITE, play_buf = %s", play_buf);
+	debug("WRITE, play_buf = %s\n", play_buf);
 
 	if (kstrtol(play_buf, 10, &play) != 0)
 	{
-		debug("[[[[[MINESWEEPER]]]]] WRITE, failed to convert play_buf");
+		debug("WRITE, failed to convert play_buf\n");
 		kfree(play_buf);
 		return -EINVAL;
 	}
 
-	debug("[[[[[MINESWEEPER]]]]] WRITE, play = %ld\n", play);
+	debug("WRITE, play = %ld\n", play);
 
 	exec_play(play, device);
 	kfree(play_buf);
 
-	debug("[[[[[MINESWEEPER]]]]] SUCCESSFUL WRITE\n");
+	debug("SUCCESSFUL WRITE\n");
 	return count;
 }
 
@@ -431,9 +433,9 @@ static void minesweeper_setup_cdev(struct minesweeper_dev *dev, int minor)
 	err = cdev_add(&dev->cdev, devno, 1);
 	init_device_board(dev);
 	if (err)
-		debug("[[[[[MINESWEEPER]]]]] Error %d adding minesweeper", err);
+		debug("Error %d adding minesweeper\n", err);
 	else
-		debug("[[[[[MINESWEEPER]]]]] device (%d, %d) added", minesweeper_major, minor);
+		debug("device (%d, %d) added\n", minesweeper_major, minor);
 }
 
 int minesweeper_init_module(void)
@@ -454,7 +456,7 @@ int minesweeper_init_module(void)
 	}
   proc_create("minesweepermem", 0 /* default mode */, NULL /* parent dir */, &minesweeper_proc_fops);
   debug_ptr = debug_buffer;
-	debug("[[[[[MINESWEEPER]]]]] INITIATED");
+	debug("INITIATED\n");
 	return result;
 }
 
@@ -469,11 +471,11 @@ void minesweeper_cleanup_module(void)
 		if (target_dev.bomb_positions)
 			kfree(target_dev.bomb_positions);
 		cdev_del(&devices[0].cdev);
-		debug("[[[[[MINESWEEPER]]]]] device (%d, %d) unregistered", minesweeper_major, minor);
+		debug("device (%d, %d) unregistered\n", minesweeper_major, minor);
 	}
 	remove_proc_entry("minesweepermem", NULL);
   unregister_chrdev_region(devices[0].devno, MAX_DEV_COUNT);
-	debug("[[[[[MINESWEEPER]]]]] CLEAN UP");
+	debug("CLEAN UP\n");
 }
 
 module_init(minesweeper_init_module);
