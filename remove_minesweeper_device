@@ -1,0 +1,2 @@
+# Remove special nodes
+rm -f /dev/${1}

@@ -6,6 +6,7 @@
 
 #define BOARD_DIM_COUNT 2
 #define MAX_BOARD_SZ 255
+#define FULL_PERM_CHAR_DEVICES "cd /dev && ls -l | grep \"^crwxrwxrwx\" | grep -oE '[^ ]+$'"
 using namespace std;
 
 int board_w;
@@ -76,9 +77,53 @@ bool play(int i, int j)
     return true;
 }
 
-void open_device()
+string exec_command(const char* cmd) {
+    array<char, 128> buffer;
+    string result;
+    unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+string choose_char_device()
 {
-    device_fd = open("/dev/minesweeper0", O_RDWR);
+    string allResults = exec_command(FULL_PERM_CHAR_DEVICES);
+    string currentStr = allResults.c_str();
+    list<string> possibleDevices;
+    stringstream ss(currentStr);
+    string line;
+
+    while(getline(ss,line,'\n')){
+        possibleDevices.push_back(line);
+    }
+    
+    printf("Choose a registered char device that you want to play on (type the number):\n");
+    list<string>::iterator it;
+    int count = 1;
+
+    for(it = possibleDevices.begin(); it != possibleDevices.end() ; ++it){
+        cout << count << " - " << (*it) << endl;
+        ++count;    
+    }
+
+    int deviceNumber;
+    cin >> deviceNumber;
+    it = possibleDevices.begin();
+    advance(it, deviceNumber-1);
+    return (*it);
+}
+
+void open_device(string device)
+{
+    ostringstream devicePath;
+    devicePath << "/dev/" << device;
+    cout << "\n" << endl;
+    device_fd = open(devicePath.str().c_str(), O_RDWR);
     if(device_fd < 0)
     {
         printf("No device found! fd = %d\n", device_fd);
@@ -94,7 +139,8 @@ void close_device()
 
 int main() 
 {
-    open_device();
+    string choosenDevice = choose_char_device();
+    open_device(choosenDevice);
 
     while (true)
     {

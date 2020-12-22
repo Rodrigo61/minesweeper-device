@@ -1,0 +1,12 @@
+#!/bin/sh
+module="minesweeper"
+
+# Group: since distributions do it differently, look for wheel or use staff
+if grep -q '^staff:' /etc/group; then
+    group="staff"
+else
+    group="wheel"
+fi
+
+# Invoke insmod
+insmod ./$module.ko board_w=$1 board_h=$2 bomb_count=$3 || exit 1
