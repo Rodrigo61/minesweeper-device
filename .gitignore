@@ -7,3 +7,4 @@ modules.order
 .vscode/
 client
 minesweeper.mod.c
+minesweeper.mod
